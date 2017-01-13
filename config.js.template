@@ -1,0 +1,8 @@
+var config = {};
+config.twitter = {};
+config.twitter.consumer_key =        ''
+config.twitter.consumer_secret =     ''
+config.twitter.access_token =        ''
+config.twitter.access_token_secret = ''
+config.mapbox_token =  ""
+module.exports = config;
