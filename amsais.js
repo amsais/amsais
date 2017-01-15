@@ -83,7 +83,7 @@ rl.on('line', function(aivdm) {
 
 	aisobject.pos = {longitude: aisobject.lon, latitude: aisobject.lat};
 	// we are only interested in boats currently in the "Grachtengordel", see https://drive.google.com/open?id=14aUW4lumzLStP8yhCdgeHZYE0x0&usp=sharing, based on https://www.amsterdam.nl/publish/pages/799094/bijbehorende_kaart_vaarsnelheden_amsterdam.pdf
-	if (!geolib.isPointInside(aisobject.pos, slowzoneams1) || !geolib.isPointInside(aisobject.pos, slowzoneams2)) {
+	if (!geolib.isPointInside(aisobject.pos, slowzoneams1) && !geolib.isPointInside(aisobject.pos, slowzoneams2)) {
 		return;
 	}
 
@@ -168,7 +168,6 @@ setInterval(function() {
 	// the callback hell begins, first download map pic
 	request({uri: imgurl}).pipe(fs.createWriteStream("map.png")).on('close', function() {
 		// gist upload for data
-		// TODO: Meaningful description
 		var filename = "ais-"+tweetobj.boat.mmsi+"-"+tweetobj.boat.lastn[0].time+".tsv";
 		var data = {
 		  "public": true,
