@@ -23,7 +23,7 @@ var T = new Twit({
 // some config
 var timelimit = 300;
 var speedlimit = 6;
-var ignorediff = 2;
+var ignorediff = 3;
 var minn = 4;
 var speedchecklimit = 1
 
@@ -41,7 +41,9 @@ fs.createReadStream('b0ats.csv')
     });
 
 // geofence where the 6 km/h speed limit is in force
-var slowzoneams = [{longitude:4.8811912,latitude:52.3810482}, {longitude:4.8770285,latitude:52.3802362}, {longitude:4.8666429,latitude:52.3694944}, {longitude:4.8739815,latitude:52.3601128}, {longitude:4.8887443,latitude:52.3548184}, {longitude:4.9036789,latitude:52.3560504}, {longitude:4.8987437,latitude:52.3662713}, {longitude:4.9104166,latitude:52.3713547}, {longitude:4.9082708,latitude:52.3765685}, {longitude:4.8838949,latitude:52.3844798}, {longitude:4.8811912,latitude:52.3810482}];
+var slowzoneams1 = [{longitude:4.8862553,latitude:52.3902944}, {longitude:4.8838949,latitude:52.3854751}, {longitude:4.8810625,latitude:52.3817031}, {longitude:4.8751402,latitude:52.38021}, {longitude:4.8720503,latitude:52.3767781}, {longitude:4.8624802,latitude:52.3661403}, {longitude:4.8552275,latitude:52.357125}, {longitude:4.8517942,latitude:52.3470592}, {longitude:4.8503351,latitude:52.3439394}, {longitude:4.850378,latitude:52.3415797}, {longitude:4.8533821,latitude:52.3395345}, {longitude:4.8796892,latitude:52.3407669}, {longitude:4.8874569,latitude:52.3402687}, {longitude:4.8886156,latitude:52.3473738}, {longitude:4.89604,latitude:52.3469543}, {longitude:4.90973,latitude:52.348737}, {longitude:4.909215,latitude:52.3501526}, {longitude:4.907198,latitude:52.3528787}, {longitude:4.904151,latitude:52.3567318}, {longitude:4.902606,latitude:52.3607418}, {longitude:4.8997307,latitude:52.3662451}, {longitude:4.901619,latitude:52.3667168}, {longitude:4.9025202,latitude:52.3665072}, {longitude:4.9057388,latitude:52.3671099}, {longitude:4.9071121,latitude:52.3680532}, {longitude:4.9118757,latitude:52.3712761}, {longitude:4.9108458,latitude:52.3715381}, {longitude:4.912219,latitude:52.3729792}, {longitude:4.912262,latitude:52.374394}, {longitude:4.910717,latitude:52.374656}, {longitude:4.9097729,latitude:52.3753634}, {longitude:4.9053526,latitude:52.3776951}, {longitude:4.8974991,latitude:52.3805243}, {longitude:4.8938084,latitude:52.3824366}, {longitude:4.8932076,latitude:52.3829605}, {longitude:4.8928642,latitude:52.3862347}, {longitude:4.8916626,latitude:52.3889587}, {longitude:4.890976,latitude:52.389692}, {longitude:4.8862553,latitude:52.3902944}];
+
+var slowzoneams2 = [{longitude:4.9134636,latitude:52.3770663}, {longitude:4.9147511,latitude:52.3741844}, {longitude:4.9170685,latitude:52.3739748}, {longitude:4.9174976,latitude:52.3726648}, {longitude:4.9156952,latitude:52.3713547}, {longitude:4.9136353,latitude:52.3705687}, {longitude:4.9089146,latitude:52.3676339}, {longitude:4.9060822,latitude:52.3660617}, {longitude:4.9029064,latitude:52.3655376}, {longitude:4.9055672,latitude:52.3597721}, {longitude:4.9065113,latitude:52.3586189}, {longitude:4.9228191,latitude:52.3621832}, {longitude:4.9276257,latitude:52.3654328}, {longitude:4.9560356,latitude:52.3661141}, {longitude:4.9552631,latitude:52.3685249}, {longitude:4.9380112,latitude:52.3684725}, {longitude:4.9380112,latitude:52.3709355}, {longitude:4.9288273,latitude:52.3745512}, {longitude:4.9202442,latitude:52.3761232}, {longitude:4.9134636,latitude:52.3770663}];
 
 
 function median(values) {
@@ -80,8 +82,8 @@ rl.on('line', function(aivdm) {
 	}
 
 	aisobject.pos = {longitude: aisobject.lon, latitude: aisobject.lat};
-	// we are only interested in boats currently in the "Grachtengordel", see https://drive.google.com/open?id=14aUW4lumzLStP8yhCdgeHZYE0x0&usp=sharing
-	if (!geolib.isPointInside(aisobject.pos, slowzoneams)) {
+	// we are only interested in boats currently in the "Grachtengordel", see https://drive.google.com/open?id=14aUW4lumzLStP8yhCdgeHZYE0x0&usp=sharing, based on https://www.amsterdam.nl/publish/pages/799094/bijbehorende_kaart_vaarsnelheden_amsterdam.pdf
+	if (!geolib.isPointInside(aisobject.pos, slowzoneams1) || !geolib.isPointInside(aisobject.pos, slowzoneams2)) {
 		return;
 	}
 
@@ -119,7 +121,7 @@ rl.on('line', function(aivdm) {
 	}
 
 	// save for tweeting later
-	if (boathist.length > minn && kmhrep > (tweetcand.kmhrep + ignorediff)) {
+	if (boathist.length > minn && kmhrep > tweetcand.kmhrep) {
 		tweetcand = {boat: clone(boats[aisobject.mmsi]), kmhrep : kmhrep, timestamp : now};
 		
 		//console.log(boats[aisobject.mmsi].name + " ("+aisobject.mmsi+")");
@@ -133,7 +135,7 @@ rl.on('line', function(aivdm) {
 // this function tweets the worst offender in the last time interval
 setInterval(function() {
 
-	if (tweetcand.kmhrep < 1) {
+	if (tweetcand.kmhrep < 1 || tweetcand.kmhrep < (speedlimit + ignorediff)) {
 		console.log("Skipping tweet because no candidates");
 		return;
 	}
@@ -169,7 +171,6 @@ setInterval(function() {
 		// TODO: Meaningful description
 		var filename = "ais-"+tweetobj.boat.mmsi+"-"+tweetobj.boat.lastn[0].time+".tsv";
 		var data = {
-		  "description": "the description for this gist",
 		  "public": true,
 		  "files": {}
 		};
