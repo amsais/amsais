@@ -31,6 +31,7 @@ var speedchecklimit = 1
 var boats = {};
 var tweetcand = {kmhrep: 0};
 var session = {}; 
+var recieved = 0;
 
 // read rondvaart boat metadata
 fs.createReadStream('b0ats.csv')
@@ -65,7 +66,7 @@ var rl = readline.createInterface({
 rl.on('line', function(aivdm) {
 	var aisobject = new AisDecode(aivdm, session);
 	var now = Date.now();
-
+	recieved++;
 	// we are only interested in AIS messages that send a mmsi, a position and a speed
 	if (!aisobject.valid || !aisobject.mmsi || !aisobject.sog || !aisobject.lat || !aisobject.lon) {
 		return;
@@ -134,7 +135,8 @@ rl.on('line', function(aivdm) {
 
 // this function tweets the worst offender in the last time interval
 setInterval(function() {
-
+	console.log(new Date() + " - Received " + recieved + " messages in the last hour.")
+	recieved = 0;
 	if (tweetcand.kmhrep < 1 || tweetcand.kmhrep < (speedlimit + ignorediff)) {
 		console.log("Skipping tweet because no candidates");
 		return;
@@ -149,7 +151,7 @@ setInterval(function() {
 	datastr = "DATE_TIME_UTC\tAIS_MESSAGE\tMMSI\tPERMIT\tLATITUDE\tLONGITUDE\tSPEED_KMH\n";
 	tweetobj.boat.lastn.forEach(function(e) { 
 		linestringcoords.push([e.aisobject.lon, e.aisobject.lat]);
-		datastr += new Date(e.time).toISOString() + "\t" + e.aivdm + "\t" + e.aisobject.mmsi + "\t" + tweetobj.boat.permit + "\t" + e.aisobject.lat  + "\t" + e.aisobject.lon + "\t" + e.aisobject.sog + "\n";
+		datastr += new Date(e.time).toISOString() + "\t" + e.aivdm + "\t" + e.aisobject.mmsi + "\t" + tweetobj.boat.permit + "\t" + e.aisobject.lat  + "\t" + e.aisobject.lon + "\t" + e.aisobject.sog.toFixed(2) + "\n";
 	});
 	geojson = {"type": "Feature", "properties": {"stroke": "#ff0000", "stroke-width": 5}, "geometry": {"type": "LineString", "coordinates" : linestringcoords}};
 	// link creating the map picture with mapbox static api
@@ -182,9 +184,10 @@ setInterval(function() {
 		    var gisturl = body.html_url;
 
 		// construct tweet text
-		var tweet = "'"+tweetobj.boat.name+"' vaart " + (tweetobj.kmhrep - speedlimit).toFixed(1) +" km/h te hard (data: "+gisturl+" "+infourl+") "+company+" @020centrum @toezichttewater";
+		var tweet = "'"+tweetobj.boat.name+"' vaart " + (tweetobj.kmhrep - speedlimit).toFixed(1) +" km/h te hard (data: "+gisturl+" "+infourl+") "+company+" @020centrum @Politie_Adam";
 
 		console.log(tweet);
+
 
 		// upload map picture to Twitter
 		T.post('media/upload', { media_data: fs.readFileSync("map.png", { encoding: 'base64' }) }, function (err, data, response) {
